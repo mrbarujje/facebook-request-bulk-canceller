@@ -1,168 +1,190 @@
-// facebook-request-bulk-canceller.js
-// Version: 1.0.0
-// Author: Suman Banerjee (suman@barujjes.com)
-// Description: DevTools script to bulk cancel sent friend requests on Facebook with smart delay and UI control.
-
-/**
- * Immediately Invoked Async Function Expression (IIFE) to isolate scope
- */
 (async function () {
-    // --- Configuration ---
-    const MIN_DELAY = 3000; // 3 seconds
-    const MAX_DELAY = 8000; // 8 seconds
+  const MIN_DELAY = 3000;
+  const MAX_DELAY = 8000;
+  let totalCancelled = 0;
+  let isStopped = false;
+  let isRunning = false;
+  let currentTheme = detectFacebookTheme();
 
-    // --- State Variables ---
-    let totalCancelled = 0;
-    let isStopped = false;
-    let isRunning = false;
-    let controlBtn;
+  function detectFacebookTheme() {
+    const bg = getComputedStyle(document.body).backgroundColor;
+    const rgb = bg.match(/\d+/g).map(Number);
+    const brightness = rgb.reduce((a, b) => a + b, 0) / 3;
+    return brightness < 128 ? "dark" : "light";
+  }
 
-    /**
-     * Generates a random delay (ms) between min and max
-     */
-    function getRandomDelay(min, max) {
-        return Math.floor(Math.random() * (max - min + 1)) + min;
+  function createUIPanel() {
+    const panel = document.createElement("div");
+    panel.id = "fb-cancel-panel";
+    panel.innerHTML = `
+      <div id="fb-panel-header">📛 Facebook Request Canceller</div>
+      <div id="fb-panel-body">
+        <p>This will cancel all <strong>visible</strong> sent friend requests.</p>
+        <p>Please scroll to load all requests before proceeding.</p>
+        <div class="fb-button-row">
+          <button class="fb-btn" id="fb-confirm-start">✅ Start</button>
+          <button class="fb-btn" id="fb-confirm-cancel">❌ Cancel</button>
+        </div>
+      </div>
+    `;
+
+    Object.assign(panel.style, {
+      position: "fixed",
+      top: "50%",
+      left: "50%",
+      transform: "translate(-50%, -50%)",
+      minWidth: "260px",
+      padding: "16px",
+      borderRadius: "12px",
+      fontFamily: "Arial, sans-serif",
+      fontSize: "14px",
+      zIndex: 999999,
+      textAlign: "center",
+      boxShadow: "0 0 16px rgba(0,0,0,0.25)",
+      transition: "all 0.3s ease"
+    });
+
+    panel.className = currentTheme === "dark" ? "fb-dark" : "fb-light";
+    document.body.appendChild(panel);
+    injectStyles();
+    makeDraggable(panel);
+
+    document.getElementById("fb-confirm-start").onclick = () => {
+      renderControls();
+      isRunning = true;
+      cancelNext();
+    };
+    document.getElementById("fb-confirm-cancel").onclick = () => panel.remove();
+  }
+
+  function injectStyles() {
+    const style = document.createElement("style");
+    style.textContent = `
+      .fb-dark {
+        background: #1e1e1e;
+        color: #fff;
+      }
+      .fb-light {
+        background: #fff;
+        color: #000;
+      }
+      #fb-panel-header {
+        font-size: 16px;
+        font-weight: bold;
+        margin-bottom: 8px;
+      }
+      .fb-btn {
+        background: #4267B2;
+        border: none;
+        color: white;
+        padding: 6px 12px;
+        margin: 4px;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background 0.2s ease;
+        font-weight: bold;
+      }
+      .fb-btn:hover {
+        background: #365899;
+      }
+      .fb-button-row {
+        margin-top: 10px;
+      }
+      #fb-count.animate {
+        animation: flash 0.5s;
+      }
+      @keyframes flash {
+        0% { background: lime; color: black; }
+        100% { background: inherit; color: inherit; }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function renderControls() {
+    const body = document.getElementById("fb-panel-body");
+    body.innerHTML = `
+      <div>🚫 Requests cancelled: <span id="fb-count">0</span></div>
+      <div class="fb-button-row">
+        <button class="fb-btn" id="fb-toggle-btn">🔴 Stop</button>
+        <button class="fb-btn" id="fb-theme-btn">🌗 Toggle Theme</button>
+      </div>
+    `;
+
+    document.getElementById("fb-toggle-btn").onclick = () => {
+      const btn = document.getElementById("fb-toggle-btn");
+      if (isRunning) {
+        isStopped = true;
+        isRunning = false;
+        btn.textContent = "▶️ Resume";
+        btn.style.backgroundColor = "green";
+      } else {
+        isStopped = false;
+        isRunning = true;
+        btn.textContent = "🔴 Stop";
+        btn.style.backgroundColor = "";
+        cancelNext();
+      }
+    };
+
+    document.getElementById("fb-theme-btn").onclick = () => {
+      currentTheme = currentTheme === "dark" ? "light" : "dark";
+      document.getElementById("fb-cancel-panel").className = currentTheme === "dark" ? "fb-dark" : "fb-light";
+    };
+  }
+
+  function updateCount() {
+    const el = document.getElementById("fb-count");
+    if (el) {
+      el.textContent = totalCancelled;
+      el.classList.remove("animate");
+      void el.offsetWidth;
+      el.classList.add("animate");
     }
+  }
 
-    /**
-     * Returns a list of all visible "Cancel Request" buttons
-     */
-    function getCancelButtons() {
-        return Array.from(document.querySelectorAll('span'))
-            .filter(el =>
-                el.innerText?.toLowerCase() === 'cancel request' &&
-                el.offsetParent !== null // only visible ones
-            );
+  function makeDraggable(panel) {
+    let isDragging = false, offsetX = 0, offsetY = 0;
+    const header = panel.querySelector("#fb-panel-header");
+    header.style.cursor = "move";
+    header.onmousedown = (e) => {
+      isDragging = true;
+      offsetX = e.clientX - panel.offsetLeft;
+      offsetY = e.clientY - panel.offsetTop;
+    };
+    document.onmouseup = () => isDragging = false;
+    document.onmousemove = (e) => {
+      if (isDragging) {
+        panel.style.top = `${e.clientY - offsetY}px`;
+        panel.style.left = `${e.clientX - offsetX}px`;
+        panel.style.transform = "";
+      }
+    };
+  }
+
+  function getCancelButtons() {
+    return Array.from(document.querySelectorAll('span'))
+      .filter(el => el.innerText?.toLowerCase() === 'cancel request' && el.offsetParent !== null);
+  }
+
+  async function cancelNext() {
+    if (isStopped) return;
+    const buttons = getCancelButtons();
+    if (buttons.length === 0) {
+      console.log(`✅ All visible requests cancelled. Total: ${totalCancelled}`);
+      document.getElementById("fb-cancel-panel")?.remove();
+      return;
     }
-
-    /**
-     * Adds a control button (Stop/Resume) to the page
-     */
-    function addControlButton() {
-        controlBtn = document.createElement("button");
-        controlBtn.id = "fb-control-button";
-        controlBtn.innerText = "🔴 Stop Cancelling";
-
-        Object.assign(controlBtn.style, {
-            position: "fixed",
-            bottom: "20px",
-            right: "20px",
-            zIndex: 9999,
-            background: "red",
-            color: "white",
-            padding: "10px 15px",
-            fontSize: "14px",
-            borderRadius: "8px",
-            cursor: "pointer"
-        });
-
-        controlBtn.onclick = () => {
-            if (isRunning) {
-                // Pause the process
-                isStopped = true;
-                isRunning = false;
-                controlBtn.innerText = "▶️ Resume Cancelling";
-                controlBtn.style.background = "green";
-                console.log("🚫 Cancelling paused.");
-            } else {
-                // Resume the process
-                isStopped = false;
-                isRunning = true;
-                controlBtn.innerText = "🔴 Stop Cancelling";
-                controlBtn.style.background = "red";
-                console.log("▶️ Resumed.");
-                cancelNext(); // resume cancel loop
-            }
-        };
-
-        document.body.appendChild(controlBtn);
+    const btn = buttons[0].closest('div[role="button"]');
+    if (btn) {
+      btn.click();
+      totalCancelled++;
+      updateCount();
+      console.log(`❌ Cancelled #${totalCancelled}`);
     }
+    const delay = Math.floor(Math.random() * (MAX_DELAY - MIN_DELAY + 1)) + MIN_DELAY;
+    setTimeout(() => { if (!isStopped) cancelNext(); }, delay);
+  }
 
-    /**
-     * Adds a live counter display for cancelled requests
-     */
-    function addStatusDisplay() {
-        const div = document.createElement("div");
-        div.id = "fb-status-display";
-        div.innerHTML = `✅ Cancelled: <strong>0</strong>`;
-
-        Object.assign(div.style, {
-            position: "fixed",
-            bottom: "20px",
-            left: "20px",
-            zIndex: 9999,
-            background: "#222",
-            color: "#0f0",
-            padding: "10px 15px",
-            fontSize: "14px",
-            borderRadius: "8px",
-            fontFamily: "monospace"
-        });
-
-        document.body.appendChild(div);
-    }
-
-    /**
-     * Updates the status display
-     */
-    function updateStatus() {
-        const counter = document.querySelector("#fb-status-display strong");
-        if (counter) counter.textContent = totalCancelled;
-    }
-
-    /**
-     * Core recursive function that clicks one cancel button at a time
-     * and waits randomly before calling itself again.
-     */
-    async function cancelNext() {
-        if (isStopped) return;
-
-        const cancelButtons = getCancelButtons();
-
-        // All done
-        if (cancelButtons.length === 0) {
-            console.log(`✅ All visible requests cancelled. Total: ${totalCancelled}`);
-            removeControls();
-            return;
-        }
-
-        // Click the first available button
-        const btn = cancelButtons[0].closest('div[role="button"]');
-        if (btn) {
-            btn.click();
-            totalCancelled++;
-            updateStatus();
-            console.log(`❌ Cancelled #${totalCancelled}`);
-        }
-
-        // Wait before continuing
-        const delay = getRandomDelay(MIN_DELAY, MAX_DELAY);
-        console.log(`⏱ Waiting ${delay / 1000}s...`);
-        setTimeout(() => {
-            if (!isStopped) cancelNext();
-        }, delay);
-    }
-
-    /**
-     * Removes control UI from the screen
-     */
-    function removeControls() {
-        if (controlBtn) controlBtn.remove();
-        const statusDiv = document.getElementById("fb-status-display");
-        if (statusDiv) statusDiv.remove();
-        console.log("🎉 All done. UI cleaned up.");
-    }
-
-    /**
-     * Initial prompt and kickstart
-     */
-    if (!confirm("This will cancel all VISIBLE Facebook friend requests.\nYou must scroll manually to load all.\nContinue?")) {
-        console.log("❌ Operation aborted.");
-        return;
-    }
-
-    addControlButton();
-    addStatusDisplay();
-    isRunning = true;
-    cancelNext(); // Start cancelling
+  createUIPanel();
 })();
