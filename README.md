@@ -22,11 +22,25 @@ A handy DevTools script to **cancel all your sent Facebook friend requests** —
 > You must manually scroll the **"Sent Requests"** modal to load all entries before running.
 
 1. Go to **Facebook → Friends → Sent Requests**
+![Go to friends and click on sent requests](https://github.com/mrbarujje/facebook-request-bulk-canceller/blob/main/SCREENSHOTS/1-friend-requests.png)
 2. Manually scroll to bottom to load all friend requests
+![Manually scroll to bottom to load all friend requests](https://github.com/mrbarujje/facebook-request-bulk-canceller/blob/main/SCREENSHOTS/2-friend-requests-sent.png)
 3. Open DevTools (`F12`) → Console tab
-4. Paste contents of [`facebook-request-bulk-canceller.js`](./facebook-request-bulk-canceller.js)
-5. Press `Enter` and confirm on-screen
-6. Watch it cancel the requests for you 💺
+![Open DevTools (`F12`) → Console tab](https://github.com/mrbarujje/facebook-request-bulk-canceller/blob/main/SCREENSHOTS/3-open-console.png.png)
+4. Open Git repository
+![Open Git repository](https://github.com/mrbarujje/facebook-request-bulk-canceller/blob/main/SCREENSHOTS/4-open-git-repo.png)
+5. Copy Code
+![Copy Code](https://github.com/mrbarujje/facebook-request-bulk-canceller/blob/main/SCREENSHOTS/5-copy-code.png)
+6. Paste contents of [`facebook-request-bulk-canceller.js`](./facebook-request-bulk-canceller.js)
+![Paste Code](https://github.com/mrbarujje/facebook-request-bulk-canceller/blob/main/SCREENSHOTS/6-paste-in-console.png)
+7. Confirm you want to start cancelling your friend requests
+![Confirm you want to start cancelling your friend requests](https://github.com/mrbarujje/facebook-request-bulk-canceller/blob/main/SCREENSHOTS/7-confirm-you-want-to-do-it.png)
+8. Requests start being cancelled
+![Requests start being cancelled](https://github.com/mrbarujje/facebook-request-bulk-canceller/blob/main/SCREENSHOTS/8-requests-being-cancelled.png)
+9. Toggle Light / Dark mode
+![Toggle Light / Dark mode](https://github.com/mrbarujje/facebook-request-bulk-canceller/blob/main/SCREENSHOTS/9-you-can-toggle-dark-light-mode.png)
+10. All requests are cancelled eventually.
+![All requests are cancelled eventually.](https://github.com/mrbarujje/facebook-request-bulk-canceller/blob/main/SCREENSHOTS/10-requests-are-cancelled.png)
 
 ---
 
